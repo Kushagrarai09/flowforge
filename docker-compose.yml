@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: flowforge
+      POSTGRES_PASSWORD: flowforge
+      POSTGRES_DB: flowforge
+    ports: ["5433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data", "./backend/migrations:/docker-entrypoint-initdb.d:ro"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowforge -d flowforge"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    build: ./backend
+    command: ["/app/api"]
+    environment:
+      DATABASE_URL: postgres://flowforge:flowforge@postgres:5432/flowforge?sslmode=disable
+      REDIS_URL: redis:6379
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      PORT: "8080"
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      redis: {condition: service_started}
+  worker:
+    build: ./backend
+    command: ["/app/worker"]
+    environment:
+      DATABASE_URL: postgres://flowforge:flowforge@postgres:5432/flowforge?sslmode=disable
+      REDIS_URL: redis:6379
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      postgres: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      redis: {condition: service_started}
+volumes:
+  pgdata:
