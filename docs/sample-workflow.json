@@ -1,0 +1,11 @@
+{
+  "name": "Customer onboarding",
+  "description": "A simple dependency-driven workflow",
+  "definition": {
+    "steps": [
+      {"id": "validate", "name": "Validate customer", "type": "condition", "config": {"input_key": "approved", "equals": true}},
+      {"id": "prepare", "name": "Prepare welcome data", "type": "set", "depends_on": ["validate"], "config": {"welcome": "Welcome aboard"}},
+      {"id": "finish", "name": "Finish", "type": "noop", "depends_on": ["prepare"]}
+    ]
+  }
+}
